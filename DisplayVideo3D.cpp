@@ -3,8 +3,8 @@
 //
 
 #include "DisplayVideo3D.h"
-//#include <opencv4/opencv2/opencv.hpp>
-#include <opencv2/opencv.hpp>
+#include <opencv4/opencv2/opencv.hpp>
+//#include <opencv2/opencv.hpp>
 
 using namespace cv;
 using namespace std;
@@ -16,7 +16,7 @@ bool DisplayVideo3D::InitDeckLink() {
     IDeckLinkDisplayMode* deckLinkDisplayMode = NULL;
     BMDDisplayMode selectedDisplayMode = NULL;
     HRESULT	result;
-    deckLinkModeIndex = 0;
+    deckLinkModeIndex = 1;
 
     deckLinkIterator = CreateDeckLinkIteratorInstance();
     if (deckLinkIterator == NULL){
@@ -115,8 +115,10 @@ void DisplayVideo3D::Display() {
     int height;
     IDeckLinkMutableVideoFrame*	videoFrame_up = NULL;
     IDeckLinkMutableVideoFrame*	videoFrame_down = NULL;
+    char* videoFrame_up_data;
+    char* videoFrame_down_data;
 
-    frame= capture.open("../drop001.avi");
+    frame= capture.open("Video.avi");
     if(!capture.isOpened())
     {
         printf("can not open ...\n");
@@ -140,11 +142,18 @@ void DisplayVideo3D::Display() {
         down = frame(cv::Rect(0,height/2, width, height/2));
         imshow("down", down);
 //        cout<<frame.depth()<<frame.channels()<<endl;
-       if (myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagFlipVertical, &videoFrame_up) &&
-            myDlOutput_right->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagFlipVertical, &videoFrame_up)!= S_OK){
+       if (myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat10BitRGB, bmdFrameFlagFlipVertical, &videoFrame_up) &&
+            myDlOutput_right->CreateVideoFrame(width, height, width*4, bmdFormat10BitRGB, bmdFrameFlagFlipVertical, &videoFrame_up)!= S_OK){
             printf("error when creating frame");
             return;
         }else{
+            videoFrame_up->GetBytes((void**)&videoFrame_up_data);
+            videoFrame_down->GetBytes((void**)&videoFrame_down_data);
+            for (int i = 0; i < (width * height/2) / 10; i ++){
+                *(videoFrame_up_data + i) = 0;
+                *(videoFrame_down_data + i) = 0;
+            }
+
             myDLOutput_left->DisplayVideoFrameSync(videoFrame_up);
             myDlOutput_right->DisplayVideoFrameSync(videoFrame_down);
         }
