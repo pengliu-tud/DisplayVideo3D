@@ -7,7 +7,7 @@
 
 #include <vector>
 #include "DeckLinkAPI.h"
-
+#include <opencv4/opencv2/opencv.hpp>
 class DisplayVideo3D{
 public:
 //    DisplayVideo3D();
@@ -15,6 +15,7 @@ public:
 
     bool InitDeckLink();
     void Display();
+    void FillFrame(cv::Mat frame, char* frame_data);
 
 private:
     IDeckLinkOutput*        myDLOutput_left;
