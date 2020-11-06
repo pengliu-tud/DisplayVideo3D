@@ -33,18 +33,18 @@ bool DisplayVideo3D::InitDeckLink() {
                 myDLOutput_left = NULL;
             }
         }else{
-            if (!myDlOutput_right){
-                if (deckLink->QueryInterface(IID_IDeckLinkOutput, (void**)&myDlOutput_right) != S_OK){
-                    myDlOutput_right = NULL;
+            if (!myDLOutput_right){
+                if (deckLink->QueryInterface(IID_IDeckLinkOutput, (void**)&myDLOutput_right) != S_OK){
+                    myDLOutput_right = NULL;
                 }
             }
         }
-        if (myDlOutput_right && myDLOutput_left){
+        if (myDLOutput_right && myDLOutput_left){
             break;
         }
     }
 
-    if (!myDLOutput_left && !myDlOutput_right){
+    if (!myDLOutput_left && !myDLOutput_right){
         printf("two DeckLink devices required!");
         return false;
     }
@@ -100,6 +100,7 @@ bool DisplayVideo3D::InitDeckLink() {
         return false;
     }
     myDLOutput_left->EnableVideoOutput(selectedDisplayMode, bmdVideoOutputFlagDefault);
+    myDLOutput_right->EnableVideoOutput(selectedDisplayMode, bmdVideoOutputFlagDefault);
 //m_deckLinkOutput->DoesSupportVideoMode(bmdVideoConnectionUnspecified, displayMode, pixelFormat, bmdNoVideoOutputConversion, supportedVideoModeFlags, nullptr, &displayModeSupported)
 }
 
@@ -165,10 +166,9 @@ void DisplayVideo3D::Display() {
     double fps;
     int width;
     int height;
-    IDeckLinkMutableVideoFrame*	videoFrame_up = NULL;
-    IDeckLinkMutableVideoFrame*	videoFrame_down = NULL;
-    char* videoFrame_up_data;
-    char* videoFrame_down_data;
+
+    //void* videoFrame_up_data;
+    //void* videoFrame_down_data;
 
     char *buffer;
     if((buffer = getcwd(NULL, 0)) == NULL)
@@ -182,8 +182,8 @@ void DisplayVideo3D::Display() {
     }
 
 
-
-    frame= capture.open("video/sea01.avi");
+    //frame= capture.open("video/drop001.avi");
+    frame= capture.open("/home/liupeng/video/Video.avi");
     cout<<"frame depth:"<<frame.depth()<<"   frame channels:"<<frame.channels()<<endl;
     if(!capture.isOpened())
     {
@@ -196,40 +196,72 @@ void DisplayVideo3D::Display() {
     cout<<CV_8U<<endl;
     fps = capture.get(CAP_PROP_FPS);
     printf("frame rate: %f", fps);
+    int frame_num = 0;
 
-    cv::namedWindow("output", cv::WINDOW_AUTOSIZE);
-    cv::namedWindow("up", cv::WINDOW_AUTOSIZE);
-    cv::namedWindow("down", cv::WINDOW_AUTOSIZE);
+    //cv::namedWindow("output", cv::WINDOW_AUTOSIZE);
+    //cv::namedWindow("up", cv::WINDOW_AUTOSIZE);
+    //cv::namedWindow("down", cv::WINDOW_AUTOSIZE);
     while (capture.read(frame))
     {
 
 //        FillFrame(frame);
+        cout<<"frame number:"<<frame_num<<endl;
+        //cout<<sizeof(frame.data)<<endl;
+        IDeckLinkMutableVideoFrame* videoFrame_up = nullptr;
+        IDeckLinkMutableVideoFrame* videoFrame_down = nullptr;
+        cv::Mat up_resized, down_resized;
+        cv::Mat up_resized_c4, down_resized_c4;
 
-        cout<<sizeof(frame.data)<<endl;
+        cout<<frame.rows<<frame.cols<<endl;
         cout<<"frame depth:"<<frame.depth()<<"   frame channels:"<<frame.channels()<<endl;
-//        imshow("output", frame);
+        //imshow("output", frame);
         up = frame(cv::Rect(0,0, width, height/2));
-//        imshow("up", up);
+        cv::resize(up, up_resized, cv::Size(1920, 1080));
+        cv::cvtColor(up_resized, up_resized_c4, CV_BGR2BGRA);
+        cout<<"frame channels:"<<up_resized_c4.channels()<<endl;
+        //imshow("up", up_resized_c4);
+        cout<<up_resized.rows<<" "<<up_resized.cols<<endl;
         down = frame(cv::Rect(0,height/2, width, height/2));
-//        imshow("down", down);
+        cv::resize(down, down_resized, cv::Size(1920, 1080));
+        cv::cvtColor(down_resized, down_resized_c4, CV_BGR2BGRA);
+        //imshow("down", down_resized);
 //        cout<<frame.depth()<<frame.channels()<<endl;
-    //    if (myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat10BitRGB, bmdFrameFlagFlipVertical, &videoFrame_up) &&
-    //         myDlOutput_right->CreateVideoFrame(width, height, width*4, bmdFormat10BitRGB, bmdFrameFlagFlipVertical, &videoFrame_up)!= S_OK){
-    //         printf("error when creating frame");
-    //         return;
-    //     }else{
-    //         videoFrame_up->GetBytes((void**)&videoFrame_up_data);
-    //         videoFrame_down->GetBytes((void**)&videoFrame_down_data);
-//                memcpy(videoFrame_up_data, frame.data, frame.rows * frame.cols * frame.depth());
-    //         for (int i = 0; i < (width * height/2) / 10; i ++){
-    //             *(videoFrame_up_data + i) = 0;
-    //             *(videoFrame_down_data + i) = 0;
-    //         }
+        HRESULT result, result1;
+        result = myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame_up);
+        result1 = myDLOutput_right->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame_down);
+        if (result!= S_OK || result1!=S_OK){
+             printf("error when creating frame");
+             return;
+         }else{
+            cout<<"create frame successful"<<endl;
+            uint32_t* videoFrame_up_data;
+            uint32_t* videoFrame_down_data;
+            videoFrame_up->GetBytes((void**)&videoFrame_up_data);
+            videoFrame_down->GetBytes((void**)&videoFrame_down_data);
+            memcpy(videoFrame_up_data, up_resized_c4.data, width * height * 4);
+            videoFrame_down->GetBytes((void**)&videoFrame_down_data);
+            memcpy(videoFrame_down_data, down_resized_c4.data, width * height * 4);
+//             for (int i = 0; i < (width * height/2) / 10; i ++){
+//                 *(videoFrame_up_data + i) = 0;
+//                 *(videoFrame_down_data + i) = 0;
+//             }
 
-    //         myDLOutput_left->DisplayVideoFrameSync(videoFrame_up);
-    //         myDlOutput_right->DisplayVideoFrameSync(videoFrame_down);
-    //     }
+             myDLOutput_left->DisplayVideoFrameSync(videoFrame_up);
+             myDLOutput_right->DisplayVideoFrameSync(videoFrame_down);
+             videoFrame_up = nullptr;
+             videoFrame_up_data = nullptr;
+         }
 
+
+        frame.release();
+        up.release();
+        down.release();
+        up_resized.release();
+        up_resized_c4.release();
+        //up.release();
+        //up.release();
+        frame_num++;
+        //sleep(20/fps);
         cv::waitKey(1000/fps);
     }
 //    cout<<frame.depth()<<frame.channels()<<endl;

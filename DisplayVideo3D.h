@@ -19,7 +19,7 @@ public:
 
 private:
     IDeckLinkOutput*        myDLOutput_left;
-    IDeckLinkOutput*        myDlOutput_right;
+    IDeckLinkOutput*        myDLOutput_right;
     std::vector<IDeckLinkDisplayMode*>	displayModes;
     int deckLinkModeIndex;
 };
