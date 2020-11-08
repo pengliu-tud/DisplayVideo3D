@@ -22,5 +22,5 @@ include_directories(
         ${BLACKMAGIC_DECKLINK_INCLUDE_DIR}
 )
 
-add_executable(tests main.cpp DisplayVideo3D.cpp ../include/DeckLinkAPIDispatch.cpp)
-target_link_libraries(tests ${OpenCV_LIBS} ${LDFLAGS})
+add_executable(DisplayVideo3D main.cpp DisplayVideo3D.cpp ../include/DeckLinkAPIDispatch.cpp DLOutputCallback.cpp)
+target_link_libraries(DisplayVideo3D ${OpenCV_LIBS} ${LDFLAGS})

@@ -102,6 +102,19 @@ bool DisplayVideo3D::InitDeckLink() {
     myDLOutput_left->EnableVideoOutput(selectedDisplayMode, bmdVideoOutputFlagDefault);
     myDLOutput_right->EnableVideoOutput(selectedDisplayMode, bmdVideoOutputFlagDefault);
 //m_deckLinkOutput->DoesSupportVideoMode(bmdVideoConnectionUnspecified, displayMode, pixelFormat, bmdNoVideoOutputConversion, supportedVideoModeFlags, nullptr, &displayModeSupported)
+
+}
+
+bool DisplayVideo3D::InitVideo() {
+    capture.open("video/drop001.avi");
+    if(!capture.isOpened())
+    {
+        printf("can not open ...\n");
+        return false;
+    }else{
+        frame_count_total = capture.get(CV_CAP_PROP_FRAME_COUNT);
+        cout<<"total frames:"<<frame_count_total<<endl;
+    }
 }
 
 void DisplayVideo3D::FillFrame(cv::Mat frame, char* frame_data) {
@@ -155,11 +168,29 @@ void DisplayVideo3D::FillFrame(cv::Mat frame, char* frame_data) {
 //    }
 }
 
+
+void DisplayVideo3D::GetFrame(int index) {
+    cout<<"index:"<<index<<endl;
+
+    if(!capture.isOpened())
+    {
+        printf("video is not opened!\n");
+        return;
+    }
+
+    cv::Mat frame;
+    capture.set(CV_CAP_PROP_POS_FRAMES,index);
+    capture.read(frame);
+    cv::namedWindow("frame", WINDOW_AUTOSIZE);
+    imshow("output", frame);
+    cv::waitKey(3000);
+}
+
 void DisplayVideo3D::Display() {
 //    CvCapture *input_video = cv::cvCreateFileCapture("guitarplaying.avi");
 //    std::cout<<cv::getBuildInformation()<<std::endl;
 //    cv::VideoCapture capture("drop001.avi");
-    cv::VideoCapture capture;
+
     cv::Mat frame;
     cv::Mat up;
     cv::Mat down;
@@ -183,11 +214,11 @@ void DisplayVideo3D::Display() {
 
 
     //frame= capture.open("video/drop001.avi");
-    frame= capture.open("/home/liupeng/video/Video.avi");
-    cout<<"frame depth:"<<frame.depth()<<"   frame channels:"<<frame.channels()<<endl;
+//    frame= capture.open("/home/liupeng/video/Video.avi");
+//    cout<<"frame depth:"<<frame.depth()<<"   frame channels:"<<frame.channels()<<endl;
     if(!capture.isOpened())
     {
-        printf("can not open ...\n");
+        printf("video is not opened!\n");
         return;
     }
     width = capture.get(CAP_PROP_FRAME_WIDTH);

@@ -14,14 +14,18 @@ public:
 //    ~DisplayVideo3D();
 
     bool InitDeckLink();
+    bool InitVideo();
     void Display();
     void FillFrame(cv::Mat frame, char* frame_data);
+    void GetFrame(int index);
 
 private:
     IDeckLinkOutput*        myDLOutput_left;
     IDeckLinkOutput*        myDLOutput_right;
     std::vector<IDeckLinkDisplayMode*>	displayModes;
     int deckLinkModeIndex;
+    cv::VideoCapture capture;
+    double frame_count_total;
 };
 
 
