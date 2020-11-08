@@ -1,7 +1,7 @@
 //
 // Created by lyp on 06.11.20.
 //
-
+#include <unistd.h>
 #include "DLOutputCallback.h"
 
 using namespace std;
@@ -23,9 +23,9 @@ bool DLOutputCallback::InitDeckLink() {
     IDeckLinkDisplayModeIterator* deckLinkDisplayModeIterator = NULL;
     IDeckLink* deckLink = NULL;
     IDeckLinkDisplayMode* deckLinkDisplayMode = NULL;
-    BMDDisplayMode selectedDisplayMode = NULL;
-    HRESULT	result;
-    deckLinkModeIndex = 1;
+    BMDDisplayMode selectedDisplayMode = bmdModeHD1080p50;
+    HRESULT result;
+    deckLinkModeIndex = 7;
 
     deckLinkIterator = CreateDeckLinkIteratorInstance();
     if (deckLinkIterator == NULL){
@@ -83,8 +83,8 @@ bool DLOutputCallback::InitDeckLink() {
         }
     }
 
-    selectedDisplayMode = displayModes[deckLinkModeIndex]->GetDisplayMode();
-
+    //selectedDisplayMode = displayModes[deckLinkModeIndex]->GetDisplayMode();
+    myDLOutput_left->GetDisplayMode(selectedDisplayMode, &deckLinkDisplayMode);
     bool displayModeSupported;
     result = myDLOutput_left->DoesSupportVideoMode(
             bmdVideoConnectionUnspecified,
@@ -106,25 +106,23 @@ bool DLOutputCallback::InitDeckLink() {
         return false;
     }
 
-    if (deckLinkDisplayMode->GetFrameRate(&frame_duration, &frame_timescale) != S_OK){
-        return false;
-    }else{
-        cout<<"frame duration:"<<frame_duration<<" frame timescale:"<<frame_timescale<<endl;
-    }
-
+    deckLinkDisplayMode->GetFrameRate(&frame_duration, &frame_timescale);
+    cout<<"selected mode: frame_duration "<<frame_duration<<" frame_timescale"<<frame_timescale<<endl;
     cout<<"set callback"<<endl;
-    myDLOutput_left->SetScheduledFrameCompletionCallback(this);
-    myDLOutput_right->SetScheduledFrameCompletionCallback(this);
+    if(myDLOutput_left->SetScheduledFrameCompletionCallback(this)!=S_OK){
+        cout<<"set callback failed"<<endl;
+    }
+    //myDLOutput_right->SetScheduledFrameCompletionCallback(this);
 
     myDLOutput_left->EnableVideoOutput(selectedDisplayMode, bmdVideoOutputFlagDefault);
-    myDLOutput_right->EnableVideoOutput(selectedDisplayMode, bmdVideoOutputFlagDefault);
+    //myDLOutput_right->EnableVideoOutput(selectedDisplayMode, bmdVideoOutputFlagDefault);
 //m_deckLinkOutput->DoesSupportVideoMode(bmdVideoConnectionUnspecified, displayMode, pixelFormat, bmdNoVideoOutputConversion, supportedVideoModeFlags, nullptr, &displayModeSupported)
 
 }
 
 
 bool DLOutputCallback::InitVideo(){
-    capture.open("video/drop001.avi");
+    capture.open("/home/liupeng/video/Video.avi");
     if(!capture.isOpened())
     {
         printf("can not open ...\n");
@@ -137,26 +135,51 @@ bool DLOutputCallback::InitVideo(){
         cout<<"frame resolution:"<<frame_cols<<"x"<<frame_rows<<endl;
     }
     frame_counter = 0;
+
+    return true;
 }
 
-bool DLOutputCallback::StartPlayback() {
+void DLOutputCallback::StartPlayback() {
+
     IDeckLinkMutableVideoFrame* firstFrame;
-    void*	firstFrame_data;
+    uint32_t*	firstFrame_data;
     HRESULT result;
     result = myDLOutput_left->CreateVideoFrame(frame_cols, frame_rows, frame_cols*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &firstFrame);
-//            myDLOutput_left->CreateVideoFrame(frame_cols, frame_rows, frame_cols*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &firstFrame);
+//        myDLOutput_left->CreateVideoFrame(frame_cols, frame_rows, frame_cols*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &firstFrame);
     if (result != S_OK){
         cout<<"create frame failed"<<endl;
     }
     firstFrame->GetBytes((void**)&firstFrame_data);
-    memset(firstFrame_data, 0, firstFrame->GetRowBytes() * frame_cols);
+        //memset(firstFrame_data, 255, firstFrame->GetRowBytes() * frame_cols);
 
+    cv::Mat frame;
+    capture.set(CV_CAP_PROP_POS_FRAMES, frame_counter);
+    
+    cout<<frame_counter<<endl;
+    if (!capture.read(frame)){
+        cout<<"read frame finished"<<endl;
+        //return S_OK;
+    }
+        //namedWindow("output", cv::WINDOW_AUTOSIZE);
+        //imshow("output", frame);
+        //waitKey(2000);
+        
+    frame_counter++;
+    memcpy(firstFrame_data, frame.data, frame_rows * frame_cols*4);
     myDLOutput_left->ScheduleVideoFrame(firstFrame, 0, frame_duration, frame_timescale);
-    myDLOutput_right->ScheduleVideoFrame(firstFrame, 0, frame_duration, frame_timescale);
+    cout<<frame_counter<<endl;
+    
 
+
+    myDLOutput_left->StartScheduledPlayback(0, frame_timescale, 1.0);
+    //myDLOutput_right->ScheduleVideoFrame(firstFrame, 0, frame_duration, frame_timescale);
+    cout<<"Scheduled frame"<<endl;
+
+    //return true;
 }
 
-HRESULT DLOutputCallback::ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult){
+HRESULT DLOutputCallback::ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result0){
+    cout<<"Scheduled frame completed"<<endl;
     if (completedFrame)
     {
         cout<<"index:"<<frame_counter<<endl;
@@ -199,11 +222,12 @@ HRESULT DLOutputCallback::ScheduledFrameCompleted(IDeckLinkVideoFrame* completed
         cv::cvtColor(down_resized, down_resized_c4, CV_BGR2BGRA);
 
         result = myDLOutput_left->CreateVideoFrame(frame_cols, frame_cols, frame_cols*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame_up);
-        result1 = myDLOutput_right->CreateVideoFrame(frame_cols, frame_cols, frame_cols*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame_down);
+        //result1 = myDLOutput_right->CreateVideoFrame(frame_cols, frame_cols, frame_cols*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame_down);
 
-        if (result && result1 == true){
+        if (result == true){
+        //if (result && result1 == true){
             myDLOutput_left->ScheduleVideoFrame(videoFrame_up, frame_counter * frame_duration, frame_duration, frame_timescale);
-            myDLOutput_right->ScheduleVideoFrame(videoFrame_down, frame_counter * frame_duration, frame_duration, frame_timescale);
+        //    myDLOutput_right->ScheduleVideoFrame(videoFrame_down, frame_counter * frame_duration, frame_duration, frame_timescale);
         }
 
     }
@@ -211,9 +235,21 @@ HRESULT DLOutputCallback::ScheduledFrameCompleted(IDeckLinkVideoFrame* completed
 
 
 
-HRESULT DLOutputCallback::ScheduledPlaybackHasStopped(void){}
-HRESULT DLOutputCallback::QueryInterface (REFIID iid, LPVOID *ppv){}
-ULONG DLOutputCallback::AddRef(){}
-ULONG DLOutputCallback::Release(){}
+HRESULT DLOutputCallback::ScheduledPlaybackHasStopped(void){
+    return S_OK;
+}
+HRESULT DLOutputCallback::QueryInterface (REFIID iid, LPVOID *ppv){
+    return S_OK;
+}
+ULONG DLOutputCallback::AddRef(){
+    return ++m_refCount;
+}
+ULONG DLOutputCallback::Release(){
+    ULONG newRefValue = --m_refCount;
+    if (newRefValue == 0){
+        delete this;
+    }
+    return newRefValue;
+}
 
 

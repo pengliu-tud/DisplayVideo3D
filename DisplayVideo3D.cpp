@@ -17,7 +17,7 @@ bool DisplayVideo3D::InitDeckLink() {
     IDeckLinkDisplayModeIterator* deckLinkDisplayModeIterator = NULL;
     IDeckLink* deckLink = NULL;
     IDeckLinkDisplayMode* deckLinkDisplayMode = NULL;
-    BMDDisplayMode selectedDisplayMode = NULL;
+    BMDDisplayMode selectedDisplayMode = bmdModeHD1080p50;
     HRESULT	result;
     deckLinkModeIndex = 1;
 
@@ -77,8 +77,8 @@ bool DisplayVideo3D::InitDeckLink() {
         }
     }
 
-    selectedDisplayMode = displayModes[deckLinkModeIndex]->GetDisplayMode();
-
+    //selectedDisplayMode = displayModes[deckLinkModeIndex]->GetDisplayMode();
+    myDLOutput_left->GetDisplayMode(selectedDisplayMode, &deckLinkDisplayMode);
     bool displayModeSupported;
     result = myDLOutput_left->DoesSupportVideoMode(
             bmdVideoConnectionUnspecified,
@@ -106,7 +106,10 @@ bool DisplayVideo3D::InitDeckLink() {
 }
 
 bool DisplayVideo3D::InitVideo() {
-    capture.open("video/drop001.avi");
+    //capture.open("video/drop001.avi");
+    //capture.open("/home/liupeng/video/Video.avi");
+    capture.open("/home/liupeng/video/Panasonic.avi");
+    
     if(!capture.isOpened())
     {
         printf("can not open ...\n");
@@ -261,6 +264,7 @@ void DisplayVideo3D::Display() {
         result = myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame_up);
         result1 = myDLOutput_right->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame_down);
         if (result!= S_OK || result1!=S_OK){
+            cout<<result<<" "<<result1<<endl;
              printf("error when creating frame");
              return;
          }else{
@@ -272,15 +276,15 @@ void DisplayVideo3D::Display() {
             memcpy(videoFrame_up_data, up_resized_c4.data, width * height * 4);
             videoFrame_down->GetBytes((void**)&videoFrame_down_data);
             memcpy(videoFrame_down_data, down_resized_c4.data, width * height * 4);
-//             for (int i = 0; i < (width * height/2) / 10; i ++){
-//                 *(videoFrame_up_data + i) = 0;
-//                 *(videoFrame_down_data + i) = 0;
-//             }
+
 
              myDLOutput_left->DisplayVideoFrameSync(videoFrame_up);
              myDLOutput_right->DisplayVideoFrameSync(videoFrame_down);
              videoFrame_up = nullptr;
+             videoFrame_down = nullptr;
              videoFrame_up_data = nullptr;
+             videoFrame_down_data = nullptr;
+
          }
 
 
@@ -289,13 +293,67 @@ void DisplayVideo3D::Display() {
         down.release();
         up_resized.release();
         up_resized_c4.release();
+        down_resized.release();
+        down_resized_c4.release();
         //up.release();
         //up.release();
         frame_num++;
         //sleep(20/fps);
-        cv::waitKey(1000/fps);
+        //cv::waitKey(1000/fps);
     }
 //    cout<<frame.depth()<<frame.channels()<<endl;
     capture.release();
     return;
+}
+
+
+void DisplayVideo3D::Display_nonsplit(){
+    cv::Mat frame;
+    cv::Mat up;
+    cv::Mat down;
+    double fps;
+    int width;
+    int height;
+
+    if(!capture.isOpened())
+    {
+        printf("video is not opened!\n");
+        return;
+    }
+    width = capture.get(CAP_PROP_FRAME_WIDTH);
+    height = capture.get(CAP_PROP_FRAME_HEIGHT);
+    cout<<"size:"<<width<<"x"<<height<<endl;
+    cout<<CV_8U<<endl;
+    fps = capture.get(CAP_PROP_FPS);
+    printf("frame rate: %f", fps);
+    int frame_num = 0;
+
+    //cv::namedWindow("output", cv::WINDOW_AUTOSIZE);
+    //cv::namedWindow("up", cv::WINDOW_AUTOSIZE);
+    //cv::namedWindow("down", cv::WINDOW_AUTOSIZE);
+    while (capture.read(frame))
+    {   
+        Mat frame_c4;
+        IDeckLinkMutableVideoFrame* videoFrame = nullptr;
+
+        cv::cvtColor(frame, frame_c4, CV_BGR2BGRA);
+        HRESULT result;
+        result = myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame);
+        if (result!= S_OK){
+             printf("error when creating frame");
+             return;
+         }else{
+            cout<<"create frame successful"<<endl;
+            uint32_t* videoFrame_data;
+
+            videoFrame->GetBytes((void**)&videoFrame_data);
+            memcpy(videoFrame_data, frame_c4.data, width * height * 4);
+            myDLOutput_left->DisplayVideoFrameSync(videoFrame);
+            cout<<"frame number:"<<frame_num<<endl;
+            frame_num++;
+         }
+
+
+    }
+
 }

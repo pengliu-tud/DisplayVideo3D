@@ -13,12 +13,12 @@ public:
 //    DLOutputCallback();
     bool InitDeckLink();
     bool InitVideo();
-    bool StartPlayback();
+    void StartPlayback();
 //    bool ProcessNextFrame();
 
-    HRESULT ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult) override;
-    HRESULT ScheduledPlaybackHasStopped() override;
-    HRESULT QueryInterface (REFIID iid, LPVOID *ppv);
+    HRESULT STDMETHODCALLTYPE ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult) override;
+    HRESULT STDMETHODCALLTYPE ScheduledPlaybackHasStopped() override;
+    HRESULT STDMETHODCALLTYPE QueryInterface (REFIID iid, LPVOID *ppv);
     ULONG AddRef();
     ULONG Release();
 
@@ -34,6 +34,7 @@ private:
     double frame_counter;
     double frame_rows;
     double frame_cols;
+    ULONG m_refCount;
 };
 
 

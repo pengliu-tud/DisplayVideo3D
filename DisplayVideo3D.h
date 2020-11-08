@@ -16,6 +16,7 @@ public:
     bool InitDeckLink();
     bool InitVideo();
     void Display();
+    void Display_nonsplit();
     void FillFrame(cv::Mat frame, char* frame_data);
     void GetFrame(int index);
 
