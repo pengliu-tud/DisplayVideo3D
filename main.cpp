@@ -7,8 +7,9 @@ int main() {
     DisplayVideo3D* displayVideo3D = new DisplayVideo3D();
     displayVideo3D->InitDeckLink();
     displayVideo3D->InitVideo();
-    //displayVideo3D->Display();
-    displayVideo3D->Display_nonsplit();
+    displayVideo3D->Display();
+    //displayVideo3D->Display_nonsplit();
+    //displayVideo3D->Display_framepointer();
  //   displayVideo3D->GetFrame(60);
 
     /*

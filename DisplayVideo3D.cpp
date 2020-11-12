@@ -108,7 +108,7 @@ bool DisplayVideo3D::InitDeckLink() {
 bool DisplayVideo3D::InitVideo() {
     //capture.open("video/drop001.avi");
     //capture.open("/home/liupeng/video/Video.avi");
-    capture.open("/home/liupeng/video/Panasonic.avi");
+    capture.open("/home/liupeng/video/Video.avi");
     
     if(!capture.isOpened())
     {
@@ -272,7 +272,7 @@ void DisplayVideo3D::Display() {
             uint32_t* videoFrame_up_data;
             uint32_t* videoFrame_down_data;
             videoFrame_up->GetBytes((void**)&videoFrame_up_data);
-            videoFrame_down->GetBytes((void**)&videoFrame_down_data);
+            //videoFrame_down->GetBytes((void**)&videoFrame_down_data);
             memcpy(videoFrame_up_data, up_resized_c4.data, width * height * 4);
             videoFrame_down->GetBytes((void**)&videoFrame_down_data);
             memcpy(videoFrame_down_data, down_resized_c4.data, width * height * 4);
@@ -280,14 +280,15 @@ void DisplayVideo3D::Display() {
 
              myDLOutput_left->DisplayVideoFrameSync(videoFrame_up);
              myDLOutput_right->DisplayVideoFrameSync(videoFrame_down);
-             videoFrame_up = nullptr;
-             videoFrame_down = nullptr;
+             
+             videoFrame_up->Release();
+             videoFrame_down->Release();
              videoFrame_up_data = nullptr;
              videoFrame_down_data = nullptr;
 
          }
 
-
+         
         frame.release();
         up.release();
         down.release();
@@ -338,22 +339,81 @@ void DisplayVideo3D::Display_nonsplit(){
 
         cv::cvtColor(frame, frame_c4, CV_BGR2BGRA);
         HRESULT result;
+        
         result = myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame);
+
         if (result!= S_OK){
              printf("error when creating frame");
-             return;
+             //return;
          }else{
             cout<<"create frame successful"<<endl;
             uint32_t* videoFrame_data;
 
-            videoFrame->GetBytes((void**)&videoFrame_data);
-            memcpy(videoFrame_data, frame_c4.data, width * height * 4);
-            myDLOutput_left->DisplayVideoFrameSync(videoFrame);
+            //videoFrame->GetBytes((void**)&videoFrame_data);
+            //memcpy(videoFrame_data, frame_c4.data, width * height * 4);
+            //myDLOutput_left->DisplayVideoFrameSync(videoFrame);
+
+         }
             cout<<"frame number:"<<frame_num<<endl;
             frame_num++;
-         }
+
+    }
+
+}
+
+void DisplayVideo3D::Display_framepointer(){
+
+    cv::Mat frame;
+    cv::Mat up;
+    cv::Mat down;
+    double fps;
+    int width;
+    int height;
+
+    double frame_pointer;
+
+    if(!capture.isOpened())
+    {
+        printf("video is not opened!\n");
+        return;
+    }
+
+    width = capture.get(CAP_PROP_FRAME_WIDTH);
+    height = capture.get(CAP_PROP_FRAME_HEIGHT);
+    cout<<"size:"<<width<<"x"<<height<<endl;
+
+    for (frame_pointer=0; frame_pointer<frame_count_total;frame_pointer++){
+        if (!capture.read(frame)){
+            cout<<"read frame finished"<<endl;
+            //return S_OK;
+        }else{
+            Mat frame_c4;
+            IDeckLinkMutableVideoFrame* videoFrame = nullptr;
+
+            cv::cvtColor(frame, frame_c4, CV_BGR2BGRA);
+            HRESULT result;
+        
+            result = myDLOutput_left->CreateVideoFrame(width, height, width*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &videoFrame);
+            if (result!= S_OK){
+                printf("error when creating frame");
+                //return;
+            }else{
+                cout<<"create frame successful"<<endl;
+                uint32_t* videoFrame_data;
+
+                videoFrame->GetBytes((void**)&videoFrame_data);
+                memcpy(videoFrame_data, frame_c4.data, width * height * 4);
+                myDLOutput_left->DisplayVideoFrameSync(videoFrame);
+
+            }
+
+
+            cout<<"frame number:"<<frame_pointer<<endl;
+            videoFrame->Release();
+        }
 
 
     }
+
 
 }

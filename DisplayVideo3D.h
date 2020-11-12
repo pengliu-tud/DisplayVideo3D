@@ -17,6 +17,7 @@ public:
     bool InitVideo();
     void Display();
     void Display_nonsplit();
+    void Display_framepointer();
     void FillFrame(cv::Mat frame, char* frame_data);
     void GetFrame(int index);
 
